@@ -57,9 +57,14 @@ button.sm{min-height:36px;padding:4px 10px}
 html,body{overflow-x:hidden}
 .month input{min-width:0;flex:1}
 @media (max-width:480px){.row{flex-wrap:wrap}.row .acts{width:100%}.row .acts button{flex:1}.total{font-size:2rem}}
-.upd{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:10;background:var(--acc);color:var(--accink);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.upd{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--acc);color:var(--accink);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .upd button{background:var(--accink);color:var(--acc);border-color:var(--accink);font-weight:600}
 .upd[hidden]{display:none}
+.ok{color:var(--ok);font-size:.9rem;min-height:1.2em;margin:8px 0 0}
+.warnl{color:var(--bad);font-weight:600}
+.bar i.full{background:var(--ok)}.bar i.over{background:var(--bad)}
+.bud{font-size:1.02rem}.bud .bad{color:var(--bad)}
+#bkInfo{margin:10px 0;display:grid;gap:4px}
 </style>
 </head>
 <body>
@@ -78,13 +83,23 @@ html,body{overflow-x:hidden}
     <div class="mute" id="monthLabel"></div>
     <p class="total" id="total">€ 0,00</p>
     <div class="mute" id="count"></div>
+    <div style="margin-top:12px">
+      <div id="budInfo" class="bud"></div>
+      <div class="bar" id="budBar" hidden><i id="budFill"></i></div>
+      <button class="sm" id="budEdit" style="margin-top:10px">Imposta budget mensile</button>
+      <div id="budForm" hidden style="margin-top:10px">
+        <label for="budIn">Budget mensile (€): vale per ogni mese</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="budIn" inputmode="decimal" placeholder="es. 800" autocomplete="off" style="flex:1;min-width:120px"><button class="pri" id="budSave">Salva</button><button id="budDel">Rimuovi</button><button id="budCancel">Annulla</button></div>
+        <p class="err" id="budErr" role="alert"></p>
+      </div>
+    </div>
   </section>
 
   <div class="two">
     <section class="card">
       <h2 id="formTitle">Aggiungi una spesa</h2>
       <div class="grid">
-        <div><label for="amount">Importo (€)</label><input id="amount" inputmode="decimal" placeholder="es. 12,50" autocomplete="off"></div>
+        <div><label for="amount">Importo (€)</label><input id="amount" inputmode="decimal" enterkeyhint="done" placeholder="es. 12,50" autocomplete="off"></div>
         <div><label for="date">Data</label><input id="date" type="date"></div>
         <div><label for="cat">Categoria</label><select id="cat"></select></div>
         <div><label for="desc">Descrizione (facoltativa)</label><input id="desc" maxlength="80" autocomplete="off"></div>
@@ -92,8 +107,9 @@ html,body{overflow-x:hidden}
       <p class="err" id="err" role="alert"></p>
       <div style="display:flex;gap:8px;margin-top:6px">
         <button class="pri" id="save">Aggiungi spesa</button>
-        <button id="cancel" hidden>Annulla modifica</button>
+        <button id="cancel" hidden>Annulla</button>
       </div>
+      <p class="ok" id="formMsg" role="status"></p>
     </section>
 
     <section class="card">
@@ -115,12 +131,15 @@ html,body{overflow-x:hidden}
   </section>
   <section class="card">
     <h2>Copia di sicurezza</h2>
-    <p class="mute" style="margin-top:0">Salva un file con tutte le spese per tenerle al sicuro o spostarle su un altro dispositivo. Importando un file, le spese nuove vengono aggiunte e quelle esistenti restano com'erano.</p>
+    <p class="mute" style="margin-top:0">Il backup è un file <b>.json</b> con tutte le tue spese (importi, date, categorie e descrizioni): sono dati personali. Conservalo in un posto sicuro e privato e non pubblicarlo online. Se cancelli i dati del sito o cambi telefono, è l'unico modo per recuperarle.</p>
+    <p class="mute">Importando un file, le spese nuove vengono aggiunte; quelle già presenti non vengono mai modificate né cancellate.</p>
+    <div id="bkInfo" aria-live="polite"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button id="bkExp" class="pri">Esporta backup</button>
       <button id="bkImp">Importa backup</button>
       <input id="bkFile" type="file" accept=".json,application/json" hidden>
     </div>
+    <p class="ok" id="bkMsg" role="status"></p>
   </section>
 </main>
 <div class="toast" id="toast" role="status"></div>
@@ -134,7 +153,7 @@ let month=new Date().toISOString().slice(0,7);
 try{const n=new Date();month=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")}catch(e){}
 
 function load(){try{const v=JSON.parse(localStorage.getItem(KEY));return Array.isArray(v)?v:[]}catch(e){return []}}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(expenses));return true}catch(e){toast("Impossibile salvare i dati in questo browser.");return false}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(expenses));if(typeof markChanged==="function")markChanged();return true}catch(e){toast("Impossibile salvare i dati in questo browser.");return false}}
 const eur=c=>(c/100).toLocaleString("it-IT",{style:"currency",currency:"EUR"});
 const today=()=>{const n=new Date();return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0")};
 function parseAmount(s){
@@ -143,35 +162,64 @@ function parseAmount(s){
   const c=Math.round(parseFloat(s.replace(",","."))*100);
   return c>0?c:null;
 }
-function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),3500)}
+function notify(t,id){toast(t);const m=$(id||"formMsg");if(m)m.textContent=t}
 function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function shift(n){const[y,m]=month.split("-").map(Number);const d=new Date(y,m-1+n,1);month=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");render()}
 
+const LCKEY="spese-mensili-ultima-cat";
+function lastCat(){try{const c=localStorage.getItem(LCKEY);return CATS.includes(c)?c:CATS[0]}catch(e){return CATS[0]}}
+function saveLastCat(c){try{localStorage.setItem(LCKEY,c)}catch(e){}}
+const BKEY="spese-mensili-budget-v1";
+function getBudget(){try{const v=JSON.parse(localStorage.getItem(BKEY));return Number.isInteger(v)&&v>0?v:null}catch(e){return null}}
+function setBudget(c){try{c==null?localStorage.removeItem(BKEY):localStorage.setItem(BKEY,JSON.stringify(c));if(typeof markChanged==="function")markChanged();return true}catch(e){toast("Impossibile salvare il budget.");return false}}
+function renderBudget(tot){
+  const b=getBudget(),info=$("budInfo"),bar=$("budBar"),fill=$("budFill");
+  $("budEdit").textContent=b?"Cambia budget":"Imposta budget mensile";
+  if(!b){info.innerHTML="";bar.hidden=true;return}
+  const left=b-tot;
+  bar.hidden=false;fill.style.width=Math.min(100,Math.round(tot/b*100))+"%";fill.className=left<0?"over":left===0?"full":"";
+  const st=left<0?`<b class="bad">⚠ Budget superato di ${eur(-left)}</b>`:left===0?"<b>✓ Budget raggiunto</b>":`Residuo <b>${eur(left)}</b>`;
+  info.innerHTML=`Budget ${eur(b)} · ${st}`;
+}
+let isDup=false;
 function fillSelects(){
   $("cat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
   $("fcat").innerHTML='<option value="">Tutte le categorie</option>'+CATS.map(c=>`<option>${c}</option>`).join("");
 }
-function resetForm(){editingId=null;$("amount").value="";$("desc").value="";$("date").value=today();$("cat").value=CATS[0];$("err").textContent="";$("formTitle").textContent="Aggiungi una spesa";$("save").textContent="Aggiungi spesa";$("cancel").hidden=true}
+function resetForm(){editingId=null;$("amount").value="";$("desc").value="";$("date").value=today();$("cat").value=lastCat();isDup=false;$("err").textContent="";$("formTitle").textContent="Aggiungi una spesa";$("save").textContent="Aggiungi spesa";$("cancel").hidden=true}
 
 function saveExpense(){
   const amount=parseAmount($("amount").value), date=$("date").value, cat=$("cat").value, desc=$("desc").value.trim();
   if(amount===null){$("err").textContent="Importo non valido: scrivi un numero maggiore di zero, per esempio 12,50.";$("amount").focus();return}
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(new Date(date))){$("err").textContent="Scegli una data valida.";$("date").focus();return}
   if(!CATS.includes(cat)){$("err").textContent="Scegli una categoria.";return}
-  if(editingId){const e=expenses.find(x=>x.id===editingId);if(e)Object.assign(e,{amount,date,cat,desc});toast("Spesa modificata")}
-  else{expenses.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),amount,date,cat,desc});toast("Spesa aggiunta")}
-  persist();month=date.slice(0,7);resetForm();render();
+  const wasEdit=!!editingId,wasDup=isDup;
+  if(wasEdit){const e=expenses.find(x=>x.id===editingId);if(e)Object.assign(e,{amount,date,cat,desc})}
+  else{expenses.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),amount,date,cat,desc})}
+  saveLastCat(cat);
+  const saved=persist();month=date.slice(0,7);resetForm();render();
+  if(saved)notify((wasEdit?"✓ Spesa modificata: ":wasDup?"✓ Spesa duplicata: ":"✓ Spesa aggiunta: ")+eur(amount)+" · "+cat);
+  if(!wasEdit)$("amount").focus({preventScroll:true});
+}
+function duplicate(id){
+  const e=expenses.find(x=>x.id===id);if(!e)return;
+  editingId=null;isDup=true;
+  $("amount").value=(e.amount/100).toFixed(2).replace(".",",");$("date").value=today();$("cat").value=e.cat;$("desc").value=e.desc;
+  $("err").textContent="";$("formTitle").textContent="Duplica spesa (data di oggi)";$("save").textContent="Aggiungi spesa";$("cancel").hidden=false;
+  notify("Spesa copiata nel modulo con la data di oggi: controlla e premi «Aggiungi spesa».");
+  $("amount").scrollIntoView({behavior:"smooth",block:"center"});$("amount").focus();
 }
 function edit(id){
   const e=expenses.find(x=>x.id===id);if(!e)return;
-  editingId=id;$("amount").value=(e.amount/100).toFixed(2).replace(".",",");$("date").value=e.date;$("cat").value=e.cat;$("desc").value=e.desc;
+  editingId=id;isDup=false;$("amount").value=(e.amount/100).toFixed(2).replace(".",",");$("date").value=e.date;$("cat").value=e.cat;$("desc").value=e.desc;
   $("err").textContent="";$("formTitle").textContent="Modifica la spesa";$("save").textContent="Salva modifiche";$("cancel").hidden=false;
   $("amount").scrollIntoView({behavior:"smooth",block:"center"});$("amount").focus();
 }
 function remove(id){
   const e=expenses.find(x=>x.id===id);if(!e)return;
   if(!confirm("Eliminare la spesa di "+eur(e.amount)+"?"))return;
-  expenses=expenses.filter(x=>x.id!==id);persist();if(editingId===id)resetForm();render();toast("Spesa eliminata");
+  expenses=expenses.filter(x=>x.id!==id);persist();if(editingId===id)resetForm();render();notify("✓ Spesa eliminata: "+eur(e.amount)+" · "+e.cat);
 }
 
 function render(){
@@ -182,6 +230,7 @@ function render(){
   const tot=inMonth.reduce((s,e)=>s+e.amount,0);
   $("total").textContent=eur(tot);
   $("count").textContent=inMonth.length===1?"1 spesa":inMonth.length+" spese";
+  renderBudget(tot);
   // categorie
   const by={};inMonth.forEach(e=>by[e.cat]=(by[e.cat]||0)+e.amount);
   const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
@@ -192,7 +241,7 @@ function render(){
   if(!list.length){
     $("list").innerHTML='<div class="empty">'+(inMonth.length?"Nessuna spesa corrisponde a ricerca e filtro.":"Nessuna spesa in questo mese. Aggiungine una dal modulo.")+"</div>";
   }else{
-    $("list").innerHTML=list.map(e=>`<div class="row"><div class="info"><div class="d">${esc(e.desc||"(senza descrizione)")}</div><div class="mute">${new Date(e.date+"T00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short"})} · ${esc(e.cat)}</div></div><div class="amt">${eur(e.amount)}</div><div class="acts"><button class="sm" data-e="${e.id}" aria-label="Modifica">Modifica</button><button class="sm del" data-d="${e.id}" aria-label="Elimina">Elimina</button></div></div>`).join("");
+    $("list").innerHTML=list.map(e=>`<div class="row"><div class="info"><div class="d">${esc(e.desc||"(senza descrizione)")}</div><div class="mute">${new Date(e.date+"T00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short"})} · ${esc(e.cat)}</div></div><div class="amt">${eur(e.amount)}</div><div class="acts"><button class="sm" data-e="${e.id}" aria-label="Modifica">Modifica</button><button class="sm" data-c="${e.id}" aria-label="Duplica">Duplica</button><button class="sm del" data-d="${e.id}" aria-label="Elimina">Elimina</button></div></div>`).join("");
   }
 }
 
@@ -211,15 +260,28 @@ $("amount").onkeydown=$("desc").onkeydown=e=>{if(e.key==="Enter")saveExpense()};
 $("prev").onclick=()=>shift(-1);$("next").onclick=()=>shift(1);
 $("month").onchange=e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){month=e.target.value;render()}};
 $("q").oninput=$("fcat").onchange=render;$("csv").onclick=exportCsv;
-$("list").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.e)edit(b.dataset.e);if(b.dataset.d)remove(b.dataset.d)};
+$("list").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.e)edit(b.dataset.e);if(b.dataset.c)duplicate(b.dataset.c);if(b.dataset.d)remove(b.dataset.d)};
 </script>
 <script>
 /* Backup, aggiornamenti e uso offline */
 function download(name,type,text){const b=new Blob([text],{type});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+const IKEY="spese-mensili-backup-info-v1";
+function getInfo(){try{return JSON.parse(localStorage.getItem(IKEY))||{}}catch(e){return {}}}
+function setInfo(p){try{localStorage.setItem(IKEY,JSON.stringify(Object.assign(getInfo(),p)))}catch(e){}renderBackupInfo()}
+function markChanged(){const i=getInfo();if(i.exportedAt&&!i.dirty)setInfo({dirty:true})}
+function renderBackupInfo(){
+  const i=getInfo(),f=t=>new Date(t).toLocaleString("it-IT",{dateStyle:"medium",timeStyle:"short"});
+  let h=i.exportedAt?`<div>✓ Ultimo backup esportato: <b>${f(i.exportedAt)}</b> (${Number(i.exportedCount)||0} spese)</div>`:"<div>Non hai ancora esportato nessun backup.</div>";
+  if(i.exportedAt&&i.dirty)h+='<div class="warnl">⚠ Da allora hai aggiunto o modificato dati: esporta un nuovo backup.</div>';
+  if(i.importedAt)h+=`<div>Ultima importazione: <b>${f(i.importedAt)}</b> (${Number(i.importedCount)||0} spese aggiunte)</div>`;
+  $("bkInfo").innerHTML=h;
+}
 function exportBackup(){
-  if(!expenses.length){toast("Non ci sono spese da salvare.");return}
-  download("spese-backup-"+today()+".json","application/json",JSON.stringify({app:"spese-mensili",version:1,exportedAt:new Date().toISOString(),expenses},null,1));
-  toast("Backup salvato");
+  if(!expenses.length){notify("Non ci sono spese da salvare: aggiungi almeno una spesa.","bkMsg");return}
+  const now=new Date().toISOString();
+  download("spese-backup-"+today()+".json","application/json",JSON.stringify({app:"spese-mensili",version:1,exportedAt:now,budget:getBudget(),expenses},null,1));
+  setInfo({exportedAt:now,exportedCount:expenses.length,dirty:false});
+  notify("✓ Backup esportato: "+expenses.length+" spese. Cerca il file spese-backup-"+today()+".json nei download e conservalo in un posto sicuro.","bkMsg");
 }
 function cleanItem(x){
   if(!x||typeof x!=="object")return null;
@@ -230,35 +292,50 @@ function cleanItem(x){
   return{id,amount,date:x.date,cat:CATS.includes(x.cat)?x.cat:"Altro",desc:typeof x.desc==="string"?x.desc.slice(0,80):""};
 }
 function parseBackup(text){
-  let d;try{d=JSON.parse(text)}catch(e){return{error:"Il file non è un backup valido."}}
+  let d;try{d=JSON.parse(text)}catch(e){return{error:"Il file non è un backup valido: non riesco a leggerlo."}}
   if(!d||d.app!=="spese-mensili"||!Array.isArray(d.expenses))return{error:"Il file non sembra un backup di questa app."};
-  const items=d.expenses.map(cleanItem).filter(Boolean);
-  const have=new Set(expenses.map(e=>e.id));
-  return{items:items.filter(i=>!have.has(i.id)),valid:items.length,skipped:d.expenses.length-items.length};
+  if(!d.expenses.length)return{error:"Il backup è vuoto: non contiene spese."};
+  const have=new Set(expenses.map(e=>e.id)),seen=new Set(),items=[];let invalid=0,dup=0;
+  for(const x of d.expenses){const c=cleanItem(x);if(!c){invalid++;continue}if(have.has(c.id)||seen.has(c.id)){dup++;continue}seen.add(c.id);items.push(c)}
+  return{items,invalid,dup,budget:Number.isInteger(d.budget)&&d.budget>0?d.budget:null};
 }
 function importBackup(file){
   if(!file)return;
-  if(file.size>5e6){toast("File troppo grande.");return}
+  const say=t=>notify(t,"bkMsg");
+  if(file.size>5e6){say("File troppo grande per essere un backup.");return}
   const r=new FileReader();
   r.onload=()=>{
     const res=parseBackup(String(r.result));
-    if(res.error){toast(res.error);return}
-    if(!res.items.length){toast("Nessuna spesa nuova da aggiungere.");return}
-    let msg="Aggiungere "+res.items.length+" spese nuove? Quelle già presenti non verranno modificate.";
-    if(res.skipped)msg+="\n("+res.skipped+" voci non valide saranno ignorate.)";
-    if(!confirm(msg))return;
+    if(res.error){say(res.error);return}
+    const newBudget=res.budget&&!getBudget()?res.budget:null;
+    if(!res.items.length&&!newBudget){say(res.dup?"Tutte le "+res.dup+" spese del file sono già presenti: non è stato aggiunto nulla.":"Nessuna spesa valida nel file: non è stato aggiunto nulla.");return}
+    let msg="Aggiungere "+res.items.length+" spese nuove alle tue?\n\nLe spese già presenti non verranno modificate né cancellate.";
+    if(res.dup)msg+="\n• "+res.dup+" già presenti: ignorate.";
+    if(res.invalid)msg+="\n• "+res.invalid+" voci non valide: ignorate.";
+    if(newBudget)msg+="\n• Verrà impostato il budget mensile di "+eur(newBudget)+" (ora non ne hai uno).";
+    if(!confirm(msg)){say("Importazione annullata: non è cambiato nulla.");return}
     const prev=expenses.slice();
     res.items.forEach(i=>expenses.push(i));
     if(!persist()){expenses.length=0;prev.forEach(e=>expenses.push(e));return}
-    render();toast(res.items.length+" spese aggiunte");
+    if(newBudget)setBudget(newBudget);
+    setInfo({importedAt:new Date().toISOString(),importedCount:res.items.length});
+    render();
+    say("✓ Importazione completata: "+res.items.length+" spese aggiunte"+(res.dup?", "+res.dup+" già presenti ignorate":"")+(res.invalid?", "+res.invalid+" voci non valide ignorate":"")+".");
   };
-  r.onerror=()=>toast("Impossibile leggere il file.");
+  r.onerror=()=>say("Impossibile leggere il file.");
   r.readAsText(file);
 }
 $("bkExp").onclick=exportBackup;
 $("bkImp").onclick=()=>$("bkFile").click();
 $("bkFile").onchange=e=>{importBackup(e.target.files[0]);e.target.value=""};
 
+$("budEdit").onclick=()=>{const b=getBudget();$("budIn").value=b?(b/100).toFixed(2).replace(".",","):"";$("budErr").textContent="";$("budForm").hidden=false;$("budDel").hidden=!b;$("budIn").focus()};
+$("budCancel").onclick=()=>{$("budForm").hidden=true};
+$("budIn").onkeydown=e=>{if(e.key==="Enter")$("budSave").click()};
+$("budSave").onclick=()=>{const c=parseAmount($("budIn").value);if(c===null){$("budErr").textContent="Budget non valido: scrivi un numero maggiore di zero, per esempio 800.";return}if(setBudget(c)){$("budForm").hidden=true;render();notify("✓ Budget mensile impostato: "+eur(c))}};
+$("budDel").onclick=()=>{if(!confirm("Rimuovere il budget mensile?"))return;if(setBudget(null)){$("budForm").hidden=true;render();notify("✓ Budget rimosso")}};
+renderBackupInfo();
+if(matchMedia("(pointer:fine)").matches)$("amount").focus({preventScroll:true});
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 
 let updating=false;

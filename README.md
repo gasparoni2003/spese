@@ -4,6 +4,8 @@ App web installabile (PWA) per gestire le spese mensili. Gratuita, senza account
 
 - I dati restano **solo nel browser del tuo dispositivo**: non vengono mai inviati a nessun server.
 - Funziona offline dopo il primo caricamento.
+- Inserimento rapido: l'ultima categoria usata resta selezionata e ogni spesa si può duplicare (con la data di oggi).
+- Budget mensile: un importo unico valido per ogni mese, con residuo e avviso di superamento.
 - Backup: dalla sezione "Copia di sicurezza" puoi esportare e importare le spese in un file `.json`.
 
 ## Pubblicazione su GitHub Pages
@@ -14,7 +16,7 @@ App web installabile (PWA) per gestire le spese mensili. Gratuita, senza account
 Tutti i percorsi sono relativi: funziona con qualsiasi nome di repository.
 
 ## Aggiornare l'app
-Modifica `VERSION` in `sw.js` (es. `"v2"`) e ricarica i file modificati. Gli utenti vedranno un avviso e potranno aggiornare senza perdere i dati.
+Modifica `VERSION` in `sw.js` (versione attuale `"v2"`, la prossima sarà `"v3"`) e ricarica i file modificati. Gli utenti vedranno un avviso e potranno aggiornare senza perdere i dati.
 
 ## Privacy
 Non caricare mai i tuoi file di backup (`spese-backup-*.json`) o CSV nel repository: contengono le tue spese.
