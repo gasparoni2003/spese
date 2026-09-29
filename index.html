@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Spese mensili</title>
+<meta name="theme-color" content="#1f5eff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spese">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#eef1f5;--card:#fff;--ink:#1a2233;--mute:#5b667a;--line:#d5dbe5;--acc:#1f5eff;--accink:#fff;--bad:#b3261e;--ok:#1b7a43;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11151d;--card:#1a212d;--ink:#e8ecf3;--mute:#9aa6ba;--line:#2c3646;--acc:#6b93ff;--accink:#0b1020;--bad:#ff8a80;--ok:#6fd39a}}
+:root[data-theme="dark"]{--bg:#11151d;--card:#1a212d;--ink:#e8ecf3;--mute:#9aa6ba;--line:#2c3646;--acc:#6b93ff;--accink:#0b1020;--bad:#ff8a80;--ok:#6fd39a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:920px;margin:0 auto;padding:16px;display:grid;gap:16px}
+h1{font-size:1.4rem;margin:0}
+h2{font-size:1.05rem;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.month{display:flex;gap:6px;align-items:center}
+.total{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;margin:4px 0 0}
+.mute{color:var(--mute);font-size:.9rem}
+label{display:block;font-size:.85rem;color:var(--mute);margin-bottom:4px}
+input,select,button{font:inherit;color:inherit}
+input,select{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+button{min-height:44px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer}
+button.pri{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+button.del{color:var(--bad)}
+button.sm{min-height:36px;padding:4px 10px}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.err{color:var(--bad);font-size:.9rem;min-height:1.2em;margin:8px 0 0}
+.row{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .info{min-width:0;flex:1}
+.row .d{overflow-wrap:anywhere}
+.amt{font-weight:600;white-space:nowrap}
+.acts{display:flex;gap:6px}
+.bar{height:8px;border-radius:4px;background:var(--line);margin-top:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc)}
+.cat{margin:10px 0}
+.cat div.h{display:flex;justify-content:space-between}
+.empty{padding:18px 0;text-align:center;color:var(--mute)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+.two{display:grid;gap:16px}
+@media (min-width:760px){.two{grid-template-columns:1fr 1fr;align-items:start}}
+html,body{overflow-x:hidden}
+.month input{min-width:0;flex:1}
+@media (max-width:480px){.row{flex-wrap:wrap}.row .acts{width:100%}.row .acts button{flex:1}.total{font-size:2rem}}
+.upd{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:10;background:var(--acc);color:var(--accink);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.upd button{background:var(--accink);color:var(--acc);border-color:var(--accink);font-weight:600}
+.upd[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="upd" id="upd" hidden role="status"><span>È disponibile una nuova versione dell'app. I tuoi dati non verranno toccati.</span><button id="updBtn">Aggiorna ora</button></div>
+<main>
+  <div class="top">
+    <h1>Spese mensili</h1>
+    <div class="month">
+      <button id="prev" aria-label="Mese precedente">‹</button>
+      <input id="month" type="month" aria-label="Mese" style="width:auto">
+      <button id="next" aria-label="Mese successivo">›</button>
+    </div>
+  </div>
+
+  <section class="card" aria-live="polite">
+    <div class="mute" id="monthLabel"></div>
+    <p class="total" id="total">€ 0,00</p>
+    <div class="mute" id="count"></div>
+  </section>
+
+  <div class="two">
+    <section class="card">
+      <h2 id="formTitle">Aggiungi una spesa</h2>
+      <div class="grid">
+        <div><label for="amount">Importo (€)</label><input id="amount" inputmode="decimal" placeholder="es. 12,50" autocomplete="off"></div>
+        <div><label for="date">Data</label><input id="date" type="date"></div>
+        <div><label for="cat">Categoria</label><select id="cat"></select></div>
+        <div><label for="desc">Descrizione (facoltativa)</label><input id="desc" maxlength="80" autocomplete="off"></div>
+      </div>
+      <p class="err" id="err" role="alert"></p>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="pri" id="save">Aggiungi spesa</button>
+        <button id="cancel" hidden>Annulla modifica</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Totale per categoria</h2>
+      <div id="cats"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="top" style="margin-bottom:8px">
+      <h2 style="margin:0">Spese del mese</h2>
+      <button id="csv" class="sm">Esporta CSV (tutte le spese)</button>
+    </div>
+    <div class="grid">
+      <div><label for="q">Cerca nella descrizione</label><input id="q" type="search" autocomplete="off"></div>
+      <div><label for="fcat">Filtra per categoria</label><select id="fcat"></select></div>
+    </div>
+    <div id="list" style="margin-top:8px"></div>
+  </section>
+  <section class="card">
+    <h2>Copia di sicurezza</h2>
+    <p class="mute" style="margin-top:0">Salva un file con tutte le spese per tenerle al sicuro o spostarle su un altro dispositivo. Importando un file, le spese nuove vengono aggiunte e quelle esistenti restano com'erano.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="bkExp" class="pri">Esporta backup</button>
+      <button id="bkImp">Importa backup</button>
+      <input id="bkFile" type="file" accept=".json,application/json" hidden>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const CATS=["Casa","Spesa","Trasporti","Svago","Salute","Altro"];
+const KEY="spese-mensili-v1";
+const $=id=>document.getElementById(id);
+let expenses=load(), editingId=null;
+let month=new Date().toISOString().slice(0,7);
+try{const n=new Date();month=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")}catch(e){}
+
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));return Array.isArray(v)?v:[]}catch(e){return []}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(expenses));return true}catch(e){toast("Impossibile salvare i dati in questo browser.");return false}}
+const eur=c=>(c/100).toLocaleString("it-IT",{style:"currency",currency:"EUR"});
+const today=()=>{const n=new Date();return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0")};
+function parseAmount(s){
+  s=String(s).trim().replace(/\s/g,"").replace("€","");
+  if(!/^\d+([.,]\d{1,2})?$/.test(s))return null;
+  const c=Math.round(parseFloat(s.replace(",","."))*100);
+  return c>0?c:null;
+}
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function shift(n){const[y,m]=month.split("-").map(Number);const d=new Date(y,m-1+n,1);month=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");render()}
+
+function fillSelects(){
+  $("cat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
+  $("fcat").innerHTML='<option value="">Tutte le categorie</option>'+CATS.map(c=>`<option>${c}</option>`).join("");
+}
+function resetForm(){editingId=null;$("amount").value="";$("desc").value="";$("date").value=today();$("cat").value=CATS[0];$("err").textContent="";$("formTitle").textContent="Aggiungi una spesa";$("save").textContent="Aggiungi spesa";$("cancel").hidden=true}
+
+function saveExpense(){
+  const amount=parseAmount($("amount").value), date=$("date").value, cat=$("cat").value, desc=$("desc").value.trim();
+  if(amount===null){$("err").textContent="Importo non valido: scrivi un numero maggiore di zero, per esempio 12,50.";$("amount").focus();return}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(new Date(date))){$("err").textContent="Scegli una data valida.";$("date").focus();return}
+  if(!CATS.includes(cat)){$("err").textContent="Scegli una categoria.";return}
+  if(editingId){const e=expenses.find(x=>x.id===editingId);if(e)Object.assign(e,{amount,date,cat,desc});toast("Spesa modificata")}
+  else{expenses.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),amount,date,cat,desc});toast("Spesa aggiunta")}
+  persist();month=date.slice(0,7);resetForm();render();
+}
+function edit(id){
+  const e=expenses.find(x=>x.id===id);if(!e)return;
+  editingId=id;$("amount").value=(e.amount/100).toFixed(2).replace(".",",");$("date").value=e.date;$("cat").value=e.cat;$("desc").value=e.desc;
+  $("err").textContent="";$("formTitle").textContent="Modifica la spesa";$("save").textContent="Salva modifiche";$("cancel").hidden=false;
+  $("amount").scrollIntoView({behavior:"smooth",block:"center"});$("amount").focus();
+}
+function remove(id){
+  const e=expenses.find(x=>x.id===id);if(!e)return;
+  if(!confirm("Eliminare la spesa di "+eur(e.amount)+"?"))return;
+  expenses=expenses.filter(x=>x.id!==id);persist();if(editingId===id)resetForm();render();toast("Spesa eliminata");
+}
+
+function render(){
+  $("month").value=month;
+  const[y,m]=month.split("-").map(Number);
+  $("monthLabel").textContent=new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"});
+  const inMonth=expenses.filter(e=>e.date.slice(0,7)===month);
+  const tot=inMonth.reduce((s,e)=>s+e.amount,0);
+  $("total").textContent=eur(tot);
+  $("count").textContent=inMonth.length===1?"1 spesa":inMonth.length+" spese";
+  // categorie
+  const by={};inMonth.forEach(e=>by[e.cat]=(by[e.cat]||0)+e.amount);
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $("cats").innerHTML=rows.length?rows.map(([c,v])=>`<div class="cat"><div class="h"><span>${esc(c)}</span><b>${eur(v)}</b></div><div class="bar"><i style="width:${Math.round(v/tot*100)}%"></i></div></div>`).join(""):'<div class="empty">Nessuna spesa in questo mese.</div>';
+  // lista filtrata
+  const q=$("q").value.trim().toLowerCase(), fc=$("fcat").value;
+  const list=inMonth.filter(e=>(!fc||e.cat===fc)&&(!q||e.desc.toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date));
+  if(!list.length){
+    $("list").innerHTML='<div class="empty">'+(inMonth.length?"Nessuna spesa corrisponde a ricerca e filtro.":"Nessuna spesa in questo mese. Aggiungine una dal modulo.")+"</div>";
+  }else{
+    $("list").innerHTML=list.map(e=>`<div class="row"><div class="info"><div class="d">${esc(e.desc||"(senza descrizione)")}</div><div class="mute">${new Date(e.date+"T00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short"})} · ${esc(e.cat)}</div></div><div class="amt">${eur(e.amount)}</div><div class="acts"><button class="sm" data-e="${e.id}" aria-label="Modifica">Modifica</button><button class="sm del" data-d="${e.id}" aria-label="Elimina">Elimina</button></div></div>`).join("");
+  }
+}
+
+function exportCsv(){
+  if(!expenses.length){toast("Non ci sono spese da esportare.");return}
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const lines=["Data;Categoria;Importo;Descrizione"].concat(expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[e.date,q(e.cat),(e.amount/100).toFixed(2).replace(".",","),q(e.desc)].join(";")));
+  const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="spese.csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast("File spese.csv pronto");
+}
+
+fillSelects();resetForm();render();
+$("save").onclick=saveExpense;$("cancel").onclick=()=>{resetForm()};
+$("amount").onkeydown=$("desc").onkeydown=e=>{if(e.key==="Enter")saveExpense()};
+$("prev").onclick=()=>shift(-1);$("next").onclick=()=>shift(1);
+$("month").onchange=e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){month=e.target.value;render()}};
+$("q").oninput=$("fcat").onchange=render;$("csv").onclick=exportCsv;
+$("list").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.e)edit(b.dataset.e);if(b.dataset.d)remove(b.dataset.d)};
+</script>
+<script>
+/* Backup, aggiornamenti e uso offline */
+function download(name,type,text){const b=new Blob([text],{type});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportBackup(){
+  if(!expenses.length){toast("Non ci sono spese da salvare.");return}
+  download("spese-backup-"+today()+".json","application/json",JSON.stringify({app:"spese-mensili",version:1,exportedAt:new Date().toISOString(),expenses},null,1));
+  toast("Backup salvato");
+}
+function cleanItem(x){
+  if(!x||typeof x!=="object")return null;
+  const amount=x.amount;
+  if(!Number.isInteger(amount)||amount<=0||amount>1e10)return null;
+  if(typeof x.date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||isNaN(new Date(x.date)))return null;
+  const id=typeof x.id==="string"&&x.id&&x.id.length<40?x.id:Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  return{id,amount,date:x.date,cat:CATS.includes(x.cat)?x.cat:"Altro",desc:typeof x.desc==="string"?x.desc.slice(0,80):""};
+}
+function parseBackup(text){
+  let d;try{d=JSON.parse(text)}catch(e){return{error:"Il file non è un backup valido."}}
+  if(!d||d.app!=="spese-mensili"||!Array.isArray(d.expenses))return{error:"Il file non sembra un backup di questa app."};
+  const items=d.expenses.map(cleanItem).filter(Boolean);
+  const have=new Set(expenses.map(e=>e.id));
+  return{items:items.filter(i=>!have.has(i.id)),valid:items.length,skipped:d.expenses.length-items.length};
+}
+function importBackup(file){
+  if(!file)return;
+  if(file.size>5e6){toast("File troppo grande.");return}
+  const r=new FileReader();
+  r.onload=()=>{
+    const res=parseBackup(String(r.result));
+    if(res.error){toast(res.error);return}
+    if(!res.items.length){toast("Nessuna spesa nuova da aggiungere.");return}
+    let msg="Aggiungere "+res.items.length+" spese nuove? Quelle già presenti non verranno modificate.";
+    if(res.skipped)msg+="\n("+res.skipped+" voci non valide saranno ignorate.)";
+    if(!confirm(msg))return;
+    const prev=expenses.slice();
+    res.items.forEach(i=>expenses.push(i));
+    if(!persist()){expenses.length=0;prev.forEach(e=>expenses.push(e));return}
+    render();toast(res.items.length+" spese aggiunte");
+  };
+  r.onerror=()=>toast("Impossibile leggere il file.");
+  r.readAsText(file);
+}
+$("bkExp").onclick=exportBackup;
+$("bkImp").onclick=()=>$("bkFile").click();
+$("bkFile").onchange=e=>{importBackup(e.target.files[0]);e.target.value=""};
+
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+
+let updating=false;
+function showUpdate(w){$("upd").hidden=false;$("updBtn").onclick=()=>{updating=true;w.postMessage("SKIP_WAITING")}}
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register("sw.js").then(reg=>{
+    if(reg.waiting&&navigator.serviceWorker.controller)showUpdate(reg.waiting);
+    reg.addEventListener("updatefound",()=>{const w=reg.installing;if(w)w.addEventListener("statechange",()=>{if(w.state==="installed"&&navigator.serviceWorker.controller)showUpdate(w)})});
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)reg.update().catch(()=>{})});
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(updating)location.reload()});
+}
+</script>
+</body>
+</html>
