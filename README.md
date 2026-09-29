@@ -11,6 +11,8 @@ App web installabile (PWA) per gestire le spese mensili. Gratuita, senza account
 - Spese previste mensili: descrizione, importo, categoria e giorno di scadenza; puoi sospenderle, modificarle, eliminarle o segnarle pagate. La data dei mesi più corti viene adattata all'ultimo giorno del mese. Le previsioni non diventano spese effettive fino alla registrazione del pagamento.
 - Backup: esporta e importa spese, budget e spese previste in un file `.json`. I vecchi backup sono ancora supportati; l'importazione aggiunge dati senza sovrascrivere quelli già presenti.
 - Interfaccia rinnovata con colori caldi, contrasto elevato e supporto al tema scuro del dispositivo.
+- Navigazione mobile a tre schede: «Riepilogo», «Movimenti» e «Previste». La selezione del mese resta condivisa; il pulsante «+» è disponibile da ogni scheda.
+- CSV nella scheda «Movimenti»; importazione ed esportazione del backup nella sezione «Dati e backup» del riepilogo.
 
 ## Pubblicazione su GitHub Pages
 1. Crea un repository pubblico (es. `spese`) e carica **solo** i file di questa cartella: `index.html`, `manifest.webmanifest`, `sw.js`, `.nojekyll`, `README.md` e la cartella `icons/`.
@@ -20,7 +22,7 @@ App web installabile (PWA) per gestire le spese mensili. Gratuita, senza account
 Tutti i percorsi sono relativi: funziona con qualsiasi nome di repository.
 
 ## Aggiornare l'app
-Ricarica i file aggiornati nel repository. Il service worker usa la cache `v4`; se prepari un aggiornamento successivo, incrementa `VERSION` in `sw.js`. Le spese effettive continuano a usare la chiave `spese-mensili-v1` e il loro formato esistente; budget e note di backup non vengono modificati. Le nuove spese previste e i relativi pagamenti sono salvati separatamente.
+Ricarica i file aggiornati nel repository. Il service worker usa la cache `v5`; per un aggiornamento successivo, incrementa `VERSION` in `sw.js`. Le spese effettive continuano a usare la chiave `spese-mensili-v1` e il loro formato esistente; budget e note di backup non vengono modificati. Le nuove spese previste e i relativi pagamenti sono salvati separatamente.
 
 ## Privacy
 Non caricare mai i tuoi file di backup (`spese-backup-*.json`) o CSV nel repository: contengono le tue spese.

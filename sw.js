@@ -1,5 +1,5 @@
 /* Cache del rilascio corrente. Incrementa VERSION per ogni futuro aggiornamento. */
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE = "spese-" + VERSION;
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 

@@ -115,6 +115,17 @@ details.filt summary,details.bk summary{color:var(--acc)}
 @media(max-width:420px){main{padding-left:12px;padding-right:12px}.card{padding:17px;border-radius:19px}.rhythm{padding:19px}.rhythm-metrics{gap:8px}.metric{padding:10px}.section-title{flex-direction:column;align-items:flex-start}.section-title button{align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){button{transition:none}}
 .two{display:block}
+.view-panel{display:grid;gap:16px;min-width:0}
+main{padding-bottom:calc(170px + env(safe-area-inset-bottom,0px))}
+.tabbar{position:fixed;z-index:8;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,560px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -8px 28px rgba(24,59,53,.1);backdrop-filter:blur(16px)}
+.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:54px;padding:5px 4px;background:transparent;border:0;border-radius:14px;color:var(--mute);font-size:.73rem;font-weight:600;line-height:1.15}
+.nav-item svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{background:var(--soft);color:var(--acc);font-weight:750}
+.nav-item:focus-visible{outline-offset:-2px}
+.fab{z-index:10;right:max(18px,calc((100vw - 560px)/2 + 18px));bottom:calc(84px + env(safe-area-inset-bottom,0px));width:58px;height:58px;font-size:1.8rem}
+.toast{z-index:30;bottom:calc(152px + env(safe-area-inset-bottom,0px))}
+.scrim{z-index:15}.sheet{z-index:20}
+@media(max-width:420px){.nav-item{font-size:.68rem}.tabbar{gap:4px;padding-left:8px;padding-right:8px}.fab{right:16px}}
 </style>
 </head>
 <body>
@@ -129,6 +140,7 @@ details.filt summary,details.bk summary{color:var(--acc)}
     </div>
   </div>
 
+  <section class="view-panel" id="panel-summary" data-view="summary" aria-label="Riepilogo">
   <section class="card rhythm" aria-live="polite" aria-labelledby="rhythmTitle">
     <div class="rhythm-head"><div><div class="eyebrow" id="rhythmTitle">Il tuo ritmo</div><div class="mute" id="monthLabel"></div></div><span class="pace" id="pace" aria-live="polite">Pronto</span></div>
     <p class="total" id="available">€ 0,00</p>
@@ -152,7 +164,32 @@ details.filt summary,details.bk summary{color:var(--acc)}
       <div id="cats"></div>
     </section>
   </div>
+  <details class="card bk">
+    <summary><h2>Dati e backup<span id="bkFlag"></span></h2></summary>
+    <p class="mute" style="margin-top:0">Il backup .json include spese effettive, budget e spese previste. Contiene dati personali: conservalo in un posto sicuro. I backup creati con le versioni precedenti restano importabili.</p>
+    <p class="mute">Importando un file si aggiungono solo elementi nuovi; i dati già presenti non vengono sovrascritti né cancellati.</p>
+    <div id="bkInfo" aria-live="polite"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="bkExp" class="pri">Esporta backup</button>
+      <button id="bkImp">Importa backup</button>
+      <input id="bkFile" type="file" accept=".json,application/json" hidden>
+    </div>
+    <p class="ok" id="bkMsg" role="status"></p>
+  </details>
+  </section>
 
+  <section class="view-panel" id="panel-movements" data-view="movements" aria-label="Movimenti" hidden>
+  <section class="card">
+    <div class="section-title"><h2>Movimenti del mese</h2><button id="csv" class="pri sm">Esporta CSV</button></div>
+    <details class="filt"><summary>Cerca e filtra</summary><div class="grid" style="margin-top:8px">
+      <div><label for="q">Cerca nella descrizione</label><input id="q" type="search" autocomplete="off"></div>
+      <div><label for="fcat">Filtra per categoria</label><select id="fcat"></select></div>
+    </div></details>
+    <div id="list" style="margin-top:8px"></div>
+  </section>
+  </section>
+
+  <section class="view-panel" id="panel-planned" data-view="planned" aria-label="Spese previste" hidden>
   <section class="card" aria-labelledby="plansTitle">
     <div class="section-title"><h2 id="plansTitle">Spese previste</h2><button class="sm" id="planAdd">＋ Aggiungi</button></div>
     <p class="mute" style="margin-top:0">Le spese attive riducono il disponibile, ma diventano spese effettive solo quando le segni come pagate.</p>
@@ -167,29 +204,13 @@ details.filt summary,details.bk summary{color:var(--acc)}
       <p id="planErr" class="err" role="alert"></p><div class="plan-actions"><button class="pri" id="planSave">Salva spesa prevista</button><button id="planCancel">Annulla</button></div>
     </div>
   </section>
-
-  <section class="card">
-    <h2>Spese del mese</h2>
-    <details class="filt"><summary>Cerca e filtra</summary><div class="grid" style="margin-top:8px">
-      <div><label for="q">Cerca nella descrizione</label><input id="q" type="search" autocomplete="off"></div>
-      <div><label for="fcat">Filtra per categoria</label><select id="fcat"></select></div>
-    </div></details>
-    <div id="list" style="margin-top:8px"></div>
   </section>
-  <details class="card bk">
-    <summary><h2>Copia di sicurezza e dati<span id="bkFlag"></span></h2></summary>
-  <p class="mute" style="margin-top:0">Il backup .json include spese effettive, budget e spese previste. Contiene dati personali: conservalo in un posto sicuro. I backup creati con le versioni precedenti restano importabili.</p>
-    <p class="mute">Importando un file si aggiungono solo elementi nuovi; i dati già presenti non vengono sovrascritti né cancellati.</p>
-    <div id="bkInfo" aria-live="polite"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button id="bkExp" class="pri">Esporta backup</button>
-      <button id="bkImp">Importa backup</button>
-      <button id="csv">Esporta CSV</button>
-      <input id="bkFile" type="file" accept=".json,application/json" hidden>
-    </div>
-    <p class="ok" id="bkMsg" role="status"></p>
-  </details>
 </main>
+<nav class="tabbar" aria-label="Navigazione principale">
+  <button class="nav-item active" type="button" data-view-target="summary" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></svg><span>Riepilogo</span></button>
+  <button class="nav-item" type="button" data-view-target="movements"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 0 1 2 2v16l-4-2-4 2-4-2-4 2V5a2 2 0 0 1 2-2Z"/><path d="M8 8h8M8 12h8M8 16h3"/></svg><span>Movimenti</span></button>
+  <button class="nav-item" type="button" data-view-target="planned"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.4-3"/></svg><span>Previste</span></button>
+</nav>
 <button class="fab" id="fab" aria-label="Aggiungi una spesa">+</button>
 <div class="scrim" id="scrim" hidden></div>
 <section class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="formTitle">
@@ -215,6 +236,7 @@ const ICON={Casa:"🏠",Spesa:"🛒",Trasporti:"🚌",Svago:"🎬",Salute:"💊"
 const KEY="spese-mensili-v1";
 const $=id=>document.getElementById(id);
 let expenses=load(), editingId=null;
+let activeView="summary";
 let month=new Date().toISOString().slice(0,7);
 try{const n=new Date();month=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")}catch(e){}
 
@@ -231,6 +253,13 @@ function parseAmount(s){
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),3500)}
 function notify(t,id){toast(t);const m=$(id||"formMsg");if(m)m.textContent=t}
 function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function setView(view,scroll=true){
+  if(!["summary","movements","planned"].includes(view))return;
+  activeView=view;
+  document.querySelectorAll(".view-panel").forEach(p=>{p.hidden=p.dataset.view!==view});
+  document.querySelectorAll(".nav-item[data-view-target]").forEach(b=>{const selected=b.dataset.viewTarget===view;b.classList.toggle("active",selected);if(selected)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  if(scroll)window.scrollTo(0,0);
+}
 function shift(n){const[y,m]=month.split("-").map(Number);const d=new Date(y,m-1+n,1);month=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");render()}
 
 const LCKEY="spese-mensili-ultima-cat";
@@ -283,6 +312,7 @@ function saveExpense(){
   month=date.slice(0,7);resetForm();render();
   if(saved)notify((paidKey?"✓ Pagamento registrato: ":wasEdit?"✓ Spesa modificata: ":wasDup?"✓ Spesa duplicata: ":"✓ Spesa aggiunta: ")+eur(amount)+" · "+cat);
   closeSheet();
+  if(saved&&!wasEdit&&!paidKey)setView("movements");
 }
 function duplicate(id){
   const e=expenses.find(x=>x.id===id);if(!e)return;
@@ -470,6 +500,8 @@ $("budIn").onkeydown=e=>{if(e.key==="Enter")$("budSave").click()};
 $("budSave").onclick=()=>{const c=parseAmount($("budIn").value);if(c===null){$("budErr").textContent="Budget non valido: scrivi un numero maggiore di zero, per esempio 800.";return}if(setBudget(c)){$("budForm").hidden=true;render();notify("✓ Budget mensile impostato: "+eur(c))}};
 $("budDel").onclick=()=>{if(!confirm("Rimuovere il budget mensile?"))return;if(setBudget(null)){$("budForm").hidden=true;render();notify("✓ Budget rimosso")}};
 renderBackupInfo();
+document.querySelector(".tabbar").onclick=e=>{const b=e.target.closest("[data-view-target]");if(b)setView(b.dataset.viewTarget)};
+setView("summary",false);
 const shut=()=>{resetForm();closeSheet()};
 $("fab").onclick=()=>{resetForm();openSheet()};
 $("close").onclick=shut;$("scrim").onclick=shut;
