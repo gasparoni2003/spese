@@ -65,6 +65,22 @@ html,body{overflow-x:hidden}
 .bar i.full{background:var(--ok)}.bar i.over{background:var(--bad)}
 .bud{font-size:1.02rem}.bud .bad{color:var(--bad)}
 #bkInfo{margin:10px 0;display:grid;gap:4px}
+[hidden]{display:none!important}
+.top h1{font-size:1.2rem}
+main{padding-bottom:96px}
+.total{font-size:2.6rem;font-variant-numeric:tabular-nums}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:60px;height:60px;border-radius:50%;background:var(--acc);color:var(--accink);border:0;font-size:2rem;line-height:1;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:5}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:15}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:94dvh;overflow:auto;background:var(--card);color:var(--ink);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));z-index:20;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+@media (min-width:600px){.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
+input.big{font-size:2rem;font-weight:700;min-height:60px;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;border-radius:22px;padding:6px 14px}
+.chip.on{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+.toast{bottom:calc(88px + env(safe-area-inset-bottom,0px));max-width:90vw;text-align:center}
+details.filt summary,details.bk summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--acc);font-weight:600}
+details.bk summary h2{margin:0}
+details.bk[open] summary{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -83,6 +99,7 @@ html,body{overflow-x:hidden}
     <div class="mute" id="monthLabel"></div>
     <p class="total" id="total">€ 0,00</p>
     <div class="mute" id="count"></div>
+    <div class="mute" id="cmp"></div>
     <div style="margin-top:12px">
       <div id="budInfo" class="bud"></div>
       <div class="bar" id="budBar" hidden><i id="budFill"></i></div>
@@ -96,21 +113,6 @@ html,body{overflow-x:hidden}
   </section>
 
   <div class="two">
-    <section class="card">
-      <h2 id="formTitle">Aggiungi una spesa</h2>
-      <div class="grid">
-        <div><label for="amount">Importo (€)</label><input id="amount" inputmode="decimal" enterkeyhint="done" placeholder="es. 12,50" autocomplete="off"></div>
-        <div><label for="date">Data</label><input id="date" type="date"></div>
-        <div><label for="cat">Categoria</label><select id="cat"></select></div>
-        <div><label for="desc">Descrizione (facoltativa)</label><input id="desc" maxlength="80" autocomplete="off"></div>
-      </div>
-      <p class="err" id="err" role="alert"></p>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <button class="pri" id="save">Aggiungi spesa</button>
-        <button id="cancel" hidden>Annulla</button>
-      </div>
-      <p class="ok" id="formMsg" role="status"></p>
-    </section>
 
     <section class="card">
       <h2>Totale per categoria</h2>
@@ -119,33 +121,49 @@ html,body{overflow-x:hidden}
   </div>
 
   <section class="card">
-    <div class="top" style="margin-bottom:8px">
-      <h2 style="margin:0">Spese del mese</h2>
-      <button id="csv" class="sm">Esporta CSV (tutte le spese)</button>
-    </div>
-    <div class="grid">
+    <h2>Spese del mese</h2>
+    <details class="filt"><summary>Cerca e filtra</summary><div class="grid" style="margin-top:8px">
       <div><label for="q">Cerca nella descrizione</label><input id="q" type="search" autocomplete="off"></div>
       <div><label for="fcat">Filtra per categoria</label><select id="fcat"></select></div>
-    </div>
+    </div></details>
     <div id="list" style="margin-top:8px"></div>
   </section>
-  <section class="card">
-    <h2>Copia di sicurezza</h2>
+  <details class="card bk">
+    <summary><h2>Copia di sicurezza e dati<span id="bkFlag"></span></h2></summary>
     <p class="mute" style="margin-top:0">Il backup è un file <b>.json</b> con tutte le tue spese (importi, date, categorie e descrizioni): sono dati personali. Conservalo in un posto sicuro e privato e non pubblicarlo online. Se cancelli i dati del sito o cambi telefono, è l'unico modo per recuperarle.</p>
     <p class="mute">Importando un file, le spese nuove vengono aggiunte; quelle già presenti non vengono mai modificate né cancellate.</p>
     <div id="bkInfo" aria-live="polite"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button id="bkExp" class="pri">Esporta backup</button>
       <button id="bkImp">Importa backup</button>
+      <button id="csv">Esporta CSV</button>
       <input id="bkFile" type="file" accept=".json,application/json" hidden>
     </div>
     <p class="ok" id="bkMsg" role="status"></p>
-  </section>
+  </details>
 </main>
+<button class="fab" id="fab" aria-label="Aggiungi una spesa">+</button>
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="formTitle">
+  <div class="top"><h2 id="formTitle" style="margin:0">Aggiungi una spesa</h2><button id="close" class="sm" aria-label="Chiudi">✕</button></div>
+  <label for="amount" style="margin-top:12px">Importo (€)</label>
+  <input id="amount" class="big" inputmode="decimal" enterkeyhint="next" placeholder="0,00" autocomplete="off">
+  <label style="margin-top:12px">Categoria</label>
+  <div class="chips" id="chips" role="group" aria-label="Categoria"></div>
+  <select id="cat" hidden></select>
+  <label for="date" style="margin-top:12px">Data</label>
+  <div style="display:flex;gap:8px"><input id="date" type="date" style="flex:1;min-width:0"><button type="button" class="sm" id="dToday">Oggi</button><button type="button" class="sm" id="dYest">Ieri</button></div>
+  <label for="desc" style="margin-top:12px">Descrizione (facoltativa)</label>
+  <input id="desc" list="descs" maxlength="80" autocomplete="off" enterkeyhint="done"><datalist id="descs"></datalist>
+  <p class="err" id="err" role="alert"></p>
+  <div style="display:flex;gap:8px"><button class="pri" id="save" style="flex:1">Aggiungi spesa</button><button id="cancel" hidden>Annulla</button></div>
+  <p class="ok" id="formMsg" role="status"></p>
+</section>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
 const CATS=["Casa","Spesa","Trasporti","Svago","Salute","Altro"];
+const ICON={Casa:"🏠",Spesa:"🛒",Trasporti:"🚌",Svago:"🎬",Salute:"💊",Altro:"📦"};
 const KEY="spese-mensili-v1";
 const $=id=>document.getElementById(id);
 let expenses=load(), editingId=null;
@@ -183,6 +201,9 @@ function renderBudget(tot){
   info.innerHTML=`Budget ${eur(b)} · ${st}`;
 }
 let isDup=false;
+function renderChips(){const c0=$("cat").value;$("chips").innerHTML=CATS.map(c=>`<button type="button" class="chip${c===c0?" on":""}" data-k="${c}" aria-pressed="${c===c0}">${ICON[c]} ${c}</button>`).join("")}
+function openSheet(){$("sheet").hidden=false;$("scrim").hidden=false;$("fab").hidden=true;renderChips();setTimeout(()=>$("amount").focus(),60)}
+function closeSheet(){$("sheet").hidden=true;$("scrim").hidden=true;$("fab").hidden=false}
 function fillSelects(){
   $("cat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
   $("fcat").innerHTML='<option value="">Tutte le categorie</option>'+CATS.map(c=>`<option>${c}</option>`).join("");
@@ -200,7 +221,7 @@ function saveExpense(){
   saveLastCat(cat);
   const saved=persist();month=date.slice(0,7);resetForm();render();
   if(saved)notify((wasEdit?"✓ Spesa modificata: ":wasDup?"✓ Spesa duplicata: ":"✓ Spesa aggiunta: ")+eur(amount)+" · "+cat);
-  if(!wasEdit)$("amount").focus({preventScroll:true});
+  closeSheet();
 }
 function duplicate(id){
   const e=expenses.find(x=>x.id===id);if(!e)return;
@@ -208,13 +229,13 @@ function duplicate(id){
   $("amount").value=(e.amount/100).toFixed(2).replace(".",",");$("date").value=today();$("cat").value=e.cat;$("desc").value=e.desc;
   $("err").textContent="";$("formTitle").textContent="Duplica spesa (data di oggi)";$("save").textContent="Aggiungi spesa";$("cancel").hidden=false;
   notify("Spesa copiata nel modulo con la data di oggi: controlla e premi «Aggiungi spesa».");
-  $("amount").scrollIntoView({behavior:"smooth",block:"center"});$("amount").focus();
+  openSheet();
 }
 function edit(id){
   const e=expenses.find(x=>x.id===id);if(!e)return;
   editingId=id;isDup=false;$("amount").value=(e.amount/100).toFixed(2).replace(".",",");$("date").value=e.date;$("cat").value=e.cat;$("desc").value=e.desc;
   $("err").textContent="";$("formTitle").textContent="Modifica la spesa";$("save").textContent="Salva modifiche";$("cancel").hidden=false;
-  $("amount").scrollIntoView({behavior:"smooth",block:"center"});$("amount").focus();
+  openSheet();
 }
 function remove(id){
   const e=expenses.find(x=>x.id===id);if(!e)return;
@@ -231,17 +252,22 @@ function render(){
   $("total").textContent=eur(tot);
   $("count").textContent=inMonth.length===1?"1 spesa":inMonth.length+" spese";
   renderBudget(tot);
+  const pd=new Date(y,m-2,1),pm=pd.getFullYear()+"-"+String(pd.getMonth()+1).padStart(2,"0");
+  const pt=expenses.filter(e=>e.date.slice(0,7)===pm).reduce((a,e)=>a+e.amount,0);
+  $("cmp").textContent=!pt?"":tot===pt?"Uguale al mese scorso ("+eur(pt)+")":(tot>pt?"▲ ":"▼ ")+eur(Math.abs(tot-pt))+(tot>pt?" in più":" in meno")+" rispetto al mese scorso ("+eur(pt)+")";
+  const seen=[];for(const e of expenses.slice().reverse()){if(e.desc&&!seen.includes(e.desc))seen.push(e.desc);if(seen.length>=20)break}
+  $("descs").innerHTML=seen.map(d=>`<option value="${esc(d)}">`).join("");
   // categorie
   const by={};inMonth.forEach(e=>by[e.cat]=(by[e.cat]||0)+e.amount);
   const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
-  $("cats").innerHTML=rows.length?rows.map(([c,v])=>`<div class="cat"><div class="h"><span>${esc(c)}</span><b>${eur(v)}</b></div><div class="bar"><i style="width:${Math.round(v/tot*100)}%"></i></div></div>`).join(""):'<div class="empty">Nessuna spesa in questo mese.</div>';
+  $("cats").innerHTML=rows.length?rows.map(([c,v])=>`<div class="cat"><div class="h"><span>${ICON[c]||"📦"} ${esc(c)}</span><b>${eur(v)} <span class="mute">${Math.round(v/tot*100)}%</span></b></div><div class="bar"><i style="width:${Math.round(v/tot*100)}%"></i></div></div>`).join(""):'<div class="empty">Nessuna spesa in questo mese.</div>';
   // lista filtrata
   const q=$("q").value.trim().toLowerCase(), fc=$("fcat").value;
   const list=inMonth.filter(e=>(!fc||e.cat===fc)&&(!q||e.desc.toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date));
   if(!list.length){
     $("list").innerHTML='<div class="empty">'+(inMonth.length?"Nessuna spesa corrisponde a ricerca e filtro.":"Nessuna spesa in questo mese. Aggiungine una dal modulo.")+"</div>";
   }else{
-    $("list").innerHTML=list.map(e=>`<div class="row"><div class="info"><div class="d">${esc(e.desc||"(senza descrizione)")}</div><div class="mute">${new Date(e.date+"T00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short"})} · ${esc(e.cat)}</div></div><div class="amt">${eur(e.amount)}</div><div class="acts"><button class="sm" data-e="${e.id}" aria-label="Modifica">Modifica</button><button class="sm" data-c="${e.id}" aria-label="Duplica">Duplica</button><button class="sm del" data-d="${e.id}" aria-label="Elimina">Elimina</button></div></div>`).join("");
+    $("list").innerHTML=list.map(e=>`<div class="row"><div class="info"><div class="d">${esc(e.desc||"(senza descrizione)")}</div><div class="mute">${new Date(e.date+"T00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short"})} · ${ICON[e.cat]||"📦"} ${esc(e.cat)}</div></div><div class="amt">${eur(e.amount)}</div><div class="acts"><button class="sm" data-e="${e.id}" aria-label="Modifica">Modifica</button><button class="sm" data-c="${e.id}" aria-label="Duplica">Duplica</button><button class="sm del" data-d="${e.id}" aria-label="Elimina">Elimina</button></div></div>`).join("");
   }
 }
 
@@ -255,7 +281,7 @@ function exportCsv(){
 }
 
 fillSelects();resetForm();render();
-$("save").onclick=saveExpense;$("cancel").onclick=()=>{resetForm()};
+$("save").onclick=saveExpense;$("cancel").onclick=()=>{resetForm();closeSheet()};
 $("amount").onkeydown=$("desc").onkeydown=e=>{if(e.key==="Enter")saveExpense()};
 $("prev").onclick=()=>shift(-1);$("next").onclick=()=>shift(1);
 $("month").onchange=e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){month=e.target.value;render()}};
@@ -275,6 +301,7 @@ function renderBackupInfo(){
   if(i.exportedAt&&i.dirty)h+='<div class="warnl">⚠ Da allora hai aggiunto o modificato dati: esporta un nuovo backup.</div>';
   if(i.importedAt)h+=`<div>Ultima importazione: <b>${f(i.importedAt)}</b> (${Number(i.importedCount)||0} spese aggiunte)</div>`;
   $("bkInfo").innerHTML=h;
+  $("bkFlag").textContent=(!i.exportedAt||i.dirty)?" ⚠":"";
 }
 function exportBackup(){
   if(!expenses.length){notify("Non ci sono spese da salvare: aggiungi almeno una spesa.","bkMsg");return}
@@ -335,7 +362,13 @@ $("budIn").onkeydown=e=>{if(e.key==="Enter")$("budSave").click()};
 $("budSave").onclick=()=>{const c=parseAmount($("budIn").value);if(c===null){$("budErr").textContent="Budget non valido: scrivi un numero maggiore di zero, per esempio 800.";return}if(setBudget(c)){$("budForm").hidden=true;render();notify("✓ Budget mensile impostato: "+eur(c))}};
 $("budDel").onclick=()=>{if(!confirm("Rimuovere il budget mensile?"))return;if(setBudget(null)){$("budForm").hidden=true;render();notify("✓ Budget rimosso")}};
 renderBackupInfo();
-if(matchMedia("(pointer:fine)").matches)$("amount").focus({preventScroll:true});
+const shut=()=>{resetForm();closeSheet()};
+$("fab").onclick=()=>{resetForm();openSheet()};
+$("close").onclick=shut;$("scrim").onclick=shut;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("sheet").hidden)shut()});
+$("chips").onclick=e=>{const b=e.target.closest("button");if(!b)return;$("cat").value=b.dataset.k;renderChips()};
+$("dToday").onclick=()=>{$("date").value=today()};
+$("dYest").onclick=()=>{const d=new Date();d.setDate(d.getDate()-1);$("date").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 
 let updating=false;

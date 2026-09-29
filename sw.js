@@ -1,5 +1,5 @@
-/* Per rilasciare un aggiornamento: cambia VERSION (es. "v3") e ricarica i file. */
-const VERSION = "v2";
+/* Per rilasciare un aggiornamento: cambia VERSION (es. "v4") e ricarica i file. */
+const VERSION = "v3";
 const CACHE = "spese-" + VERSION;
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 
